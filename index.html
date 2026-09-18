@@ -685,6 +685,31 @@
   }
   .btn-done.show { display: block; }
 
+
+  .mute-row {
+    display: flex;
+    justify-content: center;
+    margin-top: 2px;
+  }
+  .btn-mute {
+    border: 2px solid #f0d8e0;
+    background: #fff;
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--soft);
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    transition: background 0.2s, color 0.2s;
+  }
+  .btn-mute:hover { background: #fff5f8; }
+  .btn-mute.is-muted {
+    background: #f0e8e4;
+    color: #a08878;
+    border-color: #e0d0c8;
+  }
+
   .hint {
     text-align: center;
     font-size: 0.75rem;
@@ -998,6 +1023,10 @@
       <button type="button" class="btn-bedroom" id="btnBedroom">Bedroom</button>
     </div>
 
+    <div class="mute-row">
+      <button type="button" class="btn-mute" id="btnMute" aria-pressed="false" title="Mute or unmute soft sounds">Sound on</button>
+    </div>
+
     <div class="story-row">
       <button type="button" class="btn-story" id="btnStory">Play story</button>
       <button type="button" class="btn-done" id="btnDone">Done / Replay</button>
@@ -1046,7 +1075,322 @@
   var btnStory = document.getElementById("btnStory");
   var btnDone = document.getElementById("btnDone");
 
-  var CROISSANT_SVG =
+
+  var btnMute = document.getElementById("btnMute");
+
+  /* ---- Soft Web Audio SFX (no external files) ---- */
+  var SFX = (function () {
+    var ctx = null;
+    var master = null;
+    var muted = false;
+    try { muted = localStorage.getItem("bubuDuduMuted") === "1"; } catch (e) {}
+    var cafeGain = null;
+    var cafeNoise = null;
+    var cafeFilter = null;
+    var sceneTimers = [];
+    var footTimer = null;
+    var suitcaseTimer = null;
+
+    function ensure() {
+      if (ctx) return ctx;
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = muted ? 0 : 0.42;
+      master.connect(ctx.destination);
+      return ctx;
+    }
+
+    function unlock() {
+      if (!ensure()) return;
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(function () {});
+      }
+    }
+
+    function now() {
+      return ctx ? ctx.currentTime : 0;
+    }
+
+    function envGain(vol, attack, hold, release, t0) {
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), t0 + attack);
+      g.gain.setValueAtTime(Math.max(0.0002, vol), t0 + attack + hold);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + attack + hold + release);
+      g.connect(master);
+      return g;
+    }
+
+    function tone(freq, dur, type, vol, when, slideTo) {
+      if (!ensure() || muted) return;
+      var t0 = (when != null ? when : 0) + now();
+      var o = ctx.createOscillator();
+      o.type = type || "sine";
+      o.frequency.setValueAtTime(freq, t0);
+      if (slideTo != null) {
+        o.frequency.exponentialRampToValueAtTime(Math.max(20, slideTo), t0 + dur);
+      }
+      var g = envGain(vol || 0.08, 0.012, Math.max(0.01, dur * 0.35), Math.max(0.04, dur * 0.55), t0);
+      o.connect(g);
+      o.start(t0);
+      o.stop(t0 + dur + 0.08);
+    }
+
+    function noiseBurst(dur, vol, hp, lp, when) {
+      if (!ensure() || muted) return;
+      var t0 = (when != null ? when : 0) + now();
+      var len = Math.max(1, Math.floor(ctx.sampleRate * dur));
+      var buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      var data = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      var src = ctx.createBufferSource();
+      src.buffer = buf;
+      var filter = ctx.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.value = lp || 1200;
+      filter.Q.value = 0.8;
+      if (hp) {
+        var hpf = ctx.createBiquadFilter();
+        hpf.type = "highpass";
+        hpf.frequency.value = hp;
+        src.connect(hpf);
+        hpf.connect(filter);
+      } else {
+        src.connect(filter);
+      }
+      var g = envGain(vol || 0.04, 0.005, dur * 0.2, dur * 0.7, t0);
+      filter.connect(g);
+      src.start(t0);
+      src.stop(t0 + dur + 0.02);
+    }
+
+    function clearSceneTimers() {
+      sceneTimers.forEach(function (t) {
+        clearTimeout(t);
+        clearInterval(t);
+      });
+      sceneTimers = [];
+      if (footTimer) { clearInterval(footTimer); footTimer = null; }
+      if (suitcaseTimer) { clearInterval(suitcaseTimer); suitcaseTimer = null; }
+    }
+
+    function stopCafe() {
+      if (cafeNoise) {
+        try { cafeNoise.stop(); } catch (e) {}
+        cafeNoise = null;
+      }
+      cafeGain = null;
+      cafeFilter = null;
+    }
+
+    function stopAllLoops() {
+      clearSceneTimers();
+      stopCafe();
+    }
+
+    function setMuted(v) {
+      muted = !!v;
+      try { localStorage.setItem("bubuDuduMuted", muted ? "1" : "0"); } catch (e) {}
+      if (ensure() && master) {
+        master.gain.setTargetAtTime(muted ? 0 : 0.42, now(), 0.03);
+      }
+      if (muted) stopAllLoops();
+      return muted;
+    }
+
+    function isMuted() { return muted; }
+
+    /* ---- Cue library ---- */
+    function uiSelect() {
+      unlock();
+      tone(520, 0.07, "sine", 0.05);
+      tone(780, 0.09, "triangle", 0.035, 0.04);
+    }
+
+    function uiTap() {
+      unlock();
+      tone(440, 0.05, "triangle", 0.045);
+      tone(660, 0.08, "sine", 0.03, 0.03);
+    }
+
+    function storyStart() {
+      unlock();
+      tone(392, 0.12, "sine", 0.055);
+      tone(494, 0.12, "sine", 0.05, 0.1);
+      tone(587, 0.18, "triangle", 0.055, 0.2);
+      tone(784, 0.22, "sine", 0.04, 0.32);
+    }
+
+    function storyEnd() {
+      unlock();
+      tone(659, 0.14, "sine", 0.05);
+      tone(523, 0.16, "triangle", 0.045, 0.12);
+      tone(392, 0.28, "sine", 0.055, 0.26);
+    }
+
+    function sceneChime() {
+      unlock();
+      tone(698, 0.1, "sine", 0.04);
+      tone(880, 0.14, "triangle", 0.035, 0.08);
+    }
+
+    function cupClink() {
+      tone(1400, 0.06, "sine", 0.04);
+      tone(2100, 0.1, "triangle", 0.025, 0.02);
+      noiseBurst(0.04, 0.02, 2000, 4000);
+    }
+
+    function nibble() {
+      noiseBurst(0.05, 0.028, 800, 2200);
+      tone(180, 0.04, "triangle", 0.02);
+    }
+
+    function sip() {
+      noiseBurst(0.12, 0.018, 400, 900);
+      tone(220, 0.1, "sine", 0.015, 0, 160);
+    }
+
+    function startCafe() {
+      unlock();
+      stopCafe();
+      if (!ensure() || muted) return;
+      // Very quiet filtered noise as soft cafe hush
+      var len = Math.floor(ctx.sampleRate * 2);
+      var buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      var data = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * 0.35;
+      cafeNoise = ctx.createBufferSource();
+      cafeNoise.buffer = buf;
+      cafeNoise.loop = true;
+      cafeFilter = ctx.createBiquadFilter();
+      cafeFilter.type = "lowpass";
+      cafeFilter.frequency.value = 480;
+      cafeGain = ctx.createGain();
+      cafeGain.gain.value = 0.018;
+      cafeNoise.connect(cafeFilter);
+      cafeFilter.connect(cafeGain);
+      cafeGain.connect(master);
+      cafeNoise.start();
+
+      // Soft clink + occasional nibble / sip blips
+      var tClink = setTimeout(function () { if (!muted) cupClink(); }, 950);
+      sceneTimers.push(tClink);
+      var nibbleLoop = setInterval(function () {
+        if (muted) return;
+        nibble();
+      }, 1600);
+      sceneTimers.push(nibbleLoop);
+      var sipLoop = setInterval(function () {
+        if (muted) return;
+        sip();
+      }, 3200);
+      sceneTimers.push(sipLoop);
+      var tSipFirst = setTimeout(function () { if (!muted) sip(); }, 3400);
+      sceneTimers.push(tSipFirst);
+      // Quiet down after a coffee-date length so interactive mode does not drone
+      var tStop = setTimeout(function () { stopCafe(); clearSceneTimers(); }, 10000);
+      sceneTimers.push(tStop);
+    }
+
+    function footstep() {
+      noiseBurst(0.045, 0.03, 80, 280);
+      tone(95, 0.05, "triangle", 0.025);
+    }
+
+    function suitcaseBounce() {
+      tone(160, 0.05, "triangle", 0.03);
+      tone(240, 0.04, "sine", 0.02, 0.04);
+      noiseBurst(0.03, 0.02, 200, 600);
+    }
+
+    function hopChime() {
+      tone(880, 0.08, "sine", 0.045);
+      tone(1175, 0.12, "triangle", 0.035, 0.06);
+    }
+
+    function startAdventure() {
+      unlock();
+      stopCafe();
+      clearSceneTimers();
+      if (muted) return;
+      footTimer = setInterval(function () {
+        if (muted) return;
+        footstep();
+      }, 420);
+      sceneTimers.push(footTimer);
+      suitcaseTimer = setInterval(function () {
+        if (muted) return;
+        suitcaseBounce();
+      }, 900);
+      sceneTimers.push(suitcaseTimer);
+      var hop1 = setTimeout(function () { if (!muted) hopChime(); }, 2900);
+      sceneTimers.push(hop1);
+      var hop2 = setTimeout(function () { if (!muted) hopChime(); }, 5600);
+      sceneTimers.push(hop2);
+      var tStop = setTimeout(function () {
+        if (footTimer) { clearInterval(footTimer); footTimer = null; }
+        if (suitcaseTimer) { clearInterval(suitcaseTimer); suitcaseTimer = null; }
+      }, 10000);
+      sceneTimers.push(tStop);
+    }
+
+    function heartSwell() {
+      unlock();
+      stopAllLoops();
+      tone(330, 0.35, "sine", 0.04);
+      tone(415, 0.4, "sine", 0.035, 0.08);
+      tone(494, 0.5, "triangle", 0.04, 0.18);
+      tone(660, 0.55, "sine", 0.03, 0.32);
+    }
+
+    function lullaby() {
+      unlock();
+      // Gentle wholesome chime (C major-ish)
+      var notes = [523, 587, 659, 784, 659, 523];
+      notes.forEach(function (f, i) {
+        tone(f, 0.28, i % 2 ? "triangle" : "sine", 0.032, i * 0.22);
+      });
+    }
+
+    function meow() {
+      unlock();
+      if (muted) return;
+      // Tiny cute meow: short rising then falling tone
+      if (!ensure()) return;
+      var t0 = now();
+      var o = ctx.createOscillator();
+      o.type = "triangle";
+      o.frequency.setValueAtTime(620, t0);
+      o.frequency.linearRampToValueAtTime(880, t0 + 0.06);
+      o.frequency.linearRampToValueAtTime(520, t0 + 0.18);
+      var g = envGain(0.035, 0.01, 0.06, 0.12, t0);
+      o.connect(g);
+      o.start(t0);
+      o.stop(t0 + 0.22);
+    }
+
+    return {
+      unlock: unlock,
+      setMuted: setMuted,
+      isMuted: isMuted,
+      stopAllLoops: stopAllLoops,
+      uiSelect: uiSelect,
+      uiTap: uiTap,
+      storyStart: storyStart,
+      storyEnd: storyEnd,
+      sceneChime: sceneChime,
+      startCafe: startCafe,
+      startAdventure: startAdventure,
+      heartSwell: heartSwell,
+      lullaby: lullaby,
+      meow: meow
+    };
+  })();
+
+
+    var CROISSANT_SVG =
     '<svg viewBox="0 0 40 28" xmlns="http://www.w3.org/2000/svg">' +
     '<path d="M4 18 Q8 4 20 6 Q32 4 36 18 Q28 24 20 22 Q12 24 4 18Z" fill="#e8a860" stroke="#3d2b1f" stroke-width="2"/>' +
     '<path d="M10 14 Q20 10 30 14" fill="none" stroke="#c87830" stroke-width="1.2" stroke-dasharray="2 2"/>' +
@@ -1072,6 +1416,7 @@
 
   function setController(who) {
     if (busy && mode === "story") return;
+    var changed = controller !== who;
     controller = who;
     btnBubu.classList.toggle("active", who === "bubu");
     btnDudu.classList.toggle("active", who === "dudu");
@@ -1082,6 +1427,7 @@
     hint.textContent = who === "bubu"
       ? "Bubu leads. She picks the vibe."
       : "Dudu leads. He picks the vibe.";
+    if (changed) SFX.uiSelect();
   }
 
   function clearTimers() {
@@ -1093,6 +1439,7 @@
     heartTimers.forEach(clearTimeout);
     heartTimers = [];
     if (crumbTimer) { clearInterval(crumbTimer); crumbTimer = null; }
+    SFX.stopAllLoops();
   }
 
   function setBusy(v) {
@@ -1281,6 +1628,10 @@
     lani.style.bottom = s.bottom;
     var t = setTimeout(function () { lani.classList.remove("walking"); }, 2800);
     storyTimers.push(t);
+    if (spot !== "idle" && Math.random() < 0.4) {
+      var tm = setTimeout(function () { SFX.meow(); }, 600);
+      storyTimers.push(tm);
+    }
   }
 
   function wanderLani() {
@@ -1290,6 +1641,7 @@
       lani.classList.add("walking");
       lani.style.left = (5 + Math.random() * 78) + "%";
       setTimeout(function () { lani.classList.remove("walking"); }, 2800);
+      if (Math.random() < 0.35) SFX.meow();
     }, 5500);
   }
 
@@ -1369,6 +1721,7 @@
     setDecor("cafe");
     moveLani("cafe");
     showTitle("Coffee date", opts.titleMs || 2500);
+    SFX.startCafe();
 
     // Walk in: Dudu from left, Bubu from right
     dudu.classList.add("from-left", "walking");
@@ -1423,6 +1776,7 @@
     setDecor("adventure");
     moveLani("adventure");
     showTitle("Little adventure", opts.titleMs || 2500);
+    SFX.startAdventure();
 
     bubu.classList.add("walking");
     dudu.classList.add("walking");
@@ -1466,6 +1820,7 @@
     setDecor("bedroom");
     moveLani("bedroom");
     showTitle("Cozy time", opts.titleMs || 2500);
+    SFX.heartSwell();
 
     placePair("44%", "22%", "26%");
     bubu.classList.add("sitting");
@@ -1498,6 +1853,7 @@
       clearSay();
       doHeartBurst();
       baby.classList.add("show");
+      SFX.lullaby();
       // Leader "holds" / presents baby conceptually (baby is center stage)
       setHeld(who, null);
       say(who, who === "bubu" ? "Our little boy" : "Hello Nikola", 4000);
@@ -1549,6 +1905,8 @@
     progress.classList.add("show");
     setProgress(0);
     hint.textContent = "Story playing...";
+    SFX.storyStart();
+    SFX.sceneChime();
 
     var total = 35000;
     var start = Date.now();
@@ -1563,12 +1921,14 @@
     hint.textContent = "Scene 1: Coffee date";
 
     var s2 = setTimeout(function () {
+      SFX.sceneChime();
       runAdventure({ who: "dudu", titleMs: 3000 });
       hint.textContent = "Scene 2: Little adventure";
     }, 10000);
     storyTimers.push(s2);
 
     var s3 = setTimeout(function () {
+      SFX.sceneChime();
       runBedroom({
         who: "bubu",
         titleMs: 3000,
@@ -1588,6 +1948,8 @@
       btnDone.classList.add("show");
       hint.textContent = "Story done. Tap Done / Replay, or try activities yourself.";
       showTitle("The end", 4000);
+      SFX.stopAllLoops();
+      SFX.storyEnd();
     }, 35000);
     storyTimers.push(done);
   }
@@ -1606,21 +1968,51 @@
   btnDudu.addEventListener("click", function () { setController("dudu"); });
   btnCoffee.addEventListener("click", function () {
     if (busy && mode === "story") return;
+    SFX.uiTap();
     clearTimers();
     runCoffee();
   });
   btnAdventure.addEventListener("click", function () {
     if (busy && mode === "story") return;
+    SFX.uiTap();
     clearTimers();
     runAdventure();
   });
   btnBedroom.addEventListener("click", function () {
     if (busy && mode === "story") return;
+    SFX.uiTap();
     clearTimers();
     runBedroom({ babyDelay: 3500, focusDelay: 7000 });
   });
   btnStory.addEventListener("click", runStory);
-  btnDone.addEventListener("click", onDone);
+  btnDone.addEventListener("click", function () {
+    SFX.uiTap();
+    onDone();
+  });
+
+  function syncMuteButton() {
+    var m = SFX.isMuted();
+    btnMute.textContent = m ? "Sound off" : "Sound on";
+    btnMute.classList.toggle("is-muted", m);
+    btnMute.setAttribute("aria-pressed", m ? "true" : "false");
+  }
+  btnMute.addEventListener("click", function () {
+    SFX.unlock();
+    SFX.setMuted(!SFX.isMuted());
+    syncMuteButton();
+  });
+  syncMuteButton();
+
+  // Resume AudioContext on first user gesture (browser autoplay policy)
+  function unlockAudioOnce() {
+    SFX.unlock();
+    document.removeEventListener("pointerdown", unlockAudioOnce);
+    document.removeEventListener("touchstart", unlockAudioOnce);
+    document.removeEventListener("keydown", unlockAudioOnce);
+  }
+  document.addEventListener("pointerdown", unlockAudioOnce);
+  document.addEventListener("touchstart", unlockAudioOnce, { passive: true });
+  document.addEventListener("keydown", unlockAudioOnce);
 
   setController("bubu");
   idleHome();
