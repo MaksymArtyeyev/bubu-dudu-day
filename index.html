@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Bubu &amp; Dudu Day (with Lani)</title>
+<style>
+  :root {
+    --cream: #fff8f0;
+    --blush: #ffd6e0;
+    --rose: #f4a5b8;
+    --peach: #ffd4a8;
+    --mint: #c8e6d0;
+    --sky: #b8d4f0;
+    --lavender: #d4c4f0;
+    --warm: #f5e6d3;
+    --brown: #5c4033;
+    --ink: #3d2c29;
+    --soft: #8b6f5c;
+    --gold: #e8c87a;
+    --cafe-bg: #f5e0c8;
+    --travel-bg: #d4e8f0;
+    --bed-bg: #2a1f3d;
+    --bed-mid: #4a3560;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: linear-gradient(160deg, #ffe8f0 0%, #fff5e6 40%, #e8f4ff 100%);
+    color: var(--ink);
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .app {
+    max-width: 520px;
+    margin: 0 auto;
+    min-height: 100%;
+    padding: 12px 14px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  header {
+    text-align: center;
+    padding: 8px 4px 4px;
+  }
+
+  header h1 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    background: linear-gradient(90deg, #e87a9a, #7ab8e8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  header .sub {
+    font-size: 0.82rem;
+    color: var(--soft);
+    margin-top: 2px;
+  }
+
+  .stage-wrap {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 8px 28px rgba(92, 64, 51, 0.15);
+    background: var(--cream);
+    aspect-ratio: 4 / 3.2;
+    min-height: 260px;
+  }
+
+  .stage {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transition: background 0.8s ease;
+  }
+
+  .stage.cafe { background: linear-gradient(180deg, #ffe8d0 0%, #f5d0a8 55%, #e8c090 100%); }
+  .stage.adventure { background: linear-gradient(180deg, #a8d4f0 0%, #c8e8d8 45%, #e8d8a8 100%); }
+  .stage.bedroom {
+    background: linear-gradient(180deg, #1a1228 0%, #3a2850 50%, #2a1a38 100%);
+  }
+  .stage.idle {
+    background: linear-gradient(180deg, #fff0f5 0%, #ffe8d8 50%, #e8f0ff 100%);
+  }
+
+  .scene-title {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,0.85);
+    padding: 4px 14px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--ink);
+    z-index: 20;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
+    white-space: nowrap;
+  }
+  .scene-title.show { opacity: 1; }
+  .stage.bedroom .scene-title {
+    background: rgba(80, 50, 90, 0.85);
+    color: #ffe8f0;
+  }
+
+  /* Decor layers */
+  .decor { position: absolute; inset: 0; pointer-events: none; }
+
+  /* Cafe */
+  .table {
+    position: absolute;
+    bottom: 12%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70%;
+    height: 18%;
+    background: #c48a5a;
+    border-radius: 8px 8px 4px 4px;
+    box-shadow: 0 4px 0 #9a6a40;
+  }
+  .table::before {
+    content: "";
+    position: absolute;
+    top: -8px;
+    left: 5%;
+    right: 5%;
+    height: 10px;
+    background: #d4a070;
+    border-radius: 6px;
+  }
+  .cup {
+    position: absolute;
+    width: 22px;
+    height: 26px;
+    background: #fff;
+    border-radius: 0 0 8px 8px;
+    border: 2px solid #ddd;
+    bottom: 100%;
+    margin-bottom: 4px;
+  }
+  .cup::after {
+    content: "";
+    position: absolute;
+    right: -8px;
+    top: 4px;
+    width: 8px;
+    height: 10px;
+    border: 2px solid #ddd;
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+  }
+  .cup.steam::before {
+    content: "~";
+    position: absolute;
+    top: -14px;
+    left: 4px;
+    color: rgba(255,255,255,0.7);
+    font-size: 12px;
+    animation: steam 1.5s ease-in-out infinite;
+  }
+  .croissant {
+    position: absolute;
+    width: 28px;
+    height: 16px;
+    background: #e8a860;
+    border-radius: 50% 50% 40% 40%;
+    bottom: 100%;
+    margin-bottom: 6px;
+    box-shadow: inset -4px -2px 0 #d09040;
+  }
+  .croissant::before {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border: 1px dashed #c87830;
+    border-radius: inherit;
+    opacity: 0.5;
+  }
+
+  /* Adventure */
+  .map {
+    position: absolute;
+    top: 18%;
+    right: 8%;
+    width: 70px;
+    height: 55px;
+    background: #f5e8c8;
+    border: 2px solid #c8a870;
+    border-radius: 4px;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.1);
+    transform: rotate(8deg);
+  }
+  .map::before {
+    content: "";
+    position: absolute;
+    inset: 8px;
+    border: 1.5px dashed #a08050;
+    border-radius: 2px;
+  }
+  .map .pin {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #e05070;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    top: 40%;
+    left: 45%;
+  }
+  .suitcase {
+    position: absolute;
+    bottom: 10%;
+    right: 12%;
+    width: 48px;
+    height: 36px;
+    background: #6a9ad0;
+    border-radius: 6px;
+    border: 2px solid #4a7ab0;
+  }
+  .suitcase::before {
+    content: "";
+    position: absolute;
+    top: -8px;
+    left: 12px;
+    width: 20px;
+    height: 8px;
+    border: 2px solid #4a7ab0;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+  }
+  .suitcase::after {
+    content: "";
+    position: absolute;
+    top: 40%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #4a7ab0;
+  }
+  .cloud {
+    position: absolute;
+    background: rgba(255,255,255,0.85);
+    border-radius: 20px;
+    animation: floaty 4s ease-in-out infinite;
+  }
+  .cloud::before, .cloud::after {
+    content: "";
+    position: absolute;
+    background: inherit;
+    border-radius: 50%;
+  }
+
+  /* Bedroom */
+  .curtains {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(90deg, #5a3060 0%, #5a3060 12%, transparent 12%, transparent 88%, #5a3060 88%),
+      radial-gradient(ellipse at 50% 0%, rgba(255,180,200,0.15), transparent 60%);
+    opacity: 0.9;
+  }
+  .bed {
+    position: absolute;
+    bottom: 8%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 75%;
+    height: 28%;
+    background: #6a4068;
+    border-radius: 12px 12px 6px 6px;
+  }
+  .bed::before {
+    content: "";
+    position: absolute;
+    top: -18%;
+    left: 5%;
+    right: 5%;
+    height: 40%;
+    background: #f8e8f0;
+    border-radius: 8px;
+  }
+  .heart-float {
+    position: absolute;
+    font-size: 14px;
+    opacity: 0;
+    animation: heartRise 2.5s ease-out infinite;
+    pointer-events: none;
+    z-index: 15;
+  }
+  .dim-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(20, 10, 30, 0.35);
+    opacity: 0;
+    transition: opacity 1s;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .dim-overlay.on { opacity: 1; }
+
+  /* Characters */
+  .char {
+    position: absolute;
+    bottom: 22%;
+    width: 72px;
+    height: 90px;
+    transition: left 0.6s ease, bottom 0.4s ease, transform 0.3s;
+    z-index: 10;
+  }
+  .char.bubu { left: 18%; }
+  .char.dudu { left: 52%; }
+  .char.leader { z-index: 12; }
+  .char.sitting { bottom: 28%; transform: scale(0.95); }
+
+  .panda {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+
+  .panda .ears {
+    position: absolute;
+    top: 2%;
+    left: 8%;
+    right: 8%;
+    height: 22%;
+  }
+  .panda .ear {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    background: #1a1a1a;
+    border-radius: 50%;
+  }
+  .panda .ear.l { left: 0; }
+  .panda .ear.r { right: 0; }
+  .panda .ear.pink::after {
+    content: "";
+    position: absolute;
+    inset: 5px;
+    background: #f8a0b8;
+    border-radius: 50%;
+  }
+
+  .panda .head {
+    position: absolute;
+    top: 12%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 58px;
+    height: 48px;
+    background: #fff;
+    border-radius: 50% 50% 45% 45%;
+    border: 2px solid #222;
+    z-index: 2;
+  }
+
+  .panda .eye-patch {
+    position: absolute;
+    width: 16px;
+    height: 18px;
+    background: #1a1a1a;
+    border-radius: 50%;
+    top: 28%;
+  }
+  .panda .eye-patch.l { left: 10px; }
+  .panda .eye-patch.r { right: 10px; }
+  .panda .pupil {
+    position: absolute;
+    width: 7px;
+    height: 8px;
+    background: #fff;
+    border-radius: 50%;
+    top: 4px;
+    left: 4px;
+  }
+  .panda .pupil::after {
+    content: "";
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: #111;
+    border-radius: 50%;
+    top: 2px;
+    left: 1px;
+  }
+
+  .panda .nose {
+    position: absolute;
+    width: 10px;
+    height: 7px;
+    background: #222;
+    border-radius: 50%;
+    top: 58%;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .panda .blush {
+    position: absolute;
+    width: 10px;
+    height: 6px;
+    background: #ffb0c0;
+    border-radius: 50%;
+    top: 52%;
+    opacity: 0.85;
+  }
+  .panda .blush.l { left: 4px; }
+  .panda .blush.r { right: 4px; }
+  .panda.extra-blush .blush { opacity: 1; width: 12px; height: 8px; background: #ff90a8; }
+
+  .panda .mouth {
+    position: absolute;
+    top: 72%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 10px;
+    height: 5px;
+    border-bottom: 2px solid #333;
+    border-radius: 0 0 8px 8px;
+  }
+
+  .panda .body {
+    position: absolute;
+    bottom: 8%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50px;
+    height: 42px;
+    background: #fff;
+    border: 2px solid #222;
+    border-radius: 40% 40% 35% 35%;
+    z-index: 1;
+  }
+  .panda .belly {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 28px;
+    height: 24px;
+    background: #f5f5f5;
+    border-radius: 50%;
+    border: 1px solid #eee;
+  }
+  .panda.bubu-look .body { background: #fff; }
+  .panda.dudu-look .body {
+    background: #fff;
+  }
+  /* Bubu often pink-accented, Dudu blue-ish accessory */
+  .panda .bow {
+    position: absolute;
+    top: 8%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 16px;
+    height: 10px;
+    z-index: 3;
+  }
+  .panda .bow::before, .panda .bow::after {
+    content: "";
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #f080a0;
+    border-radius: 50% 0;
+    top: 0;
+  }
+  .panda .bow::before { left: 0; transform: rotate(-20deg); }
+  .panda .bow::after { right: 0; transform: rotate(70deg); border-radius: 0 50%; }
+
+  .panda .scarf {
+    position: absolute;
+    top: 48%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 8px;
+    background: #7ab0e0;
+    border-radius: 4px;
+    z-index: 3;
+  }
+
+  .panda .arm {
+    position: absolute;
+    width: 14px;
+    height: 22px;
+    background: #1a1a1a;
+    border-radius: 8px;
+    bottom: 28%;
+    z-index: 0;
+  }
+  .panda .arm.l { left: 2px; transform: rotate(15deg); }
+  .panda .arm.r { right: 2px; transform: rotate(-15deg); }
+  .panda.holding .arm.r {
+    transform: rotate(-50deg);
+    bottom: 40%;
+  }
+
+  .held-item {
+    position: absolute;
+    top: 35%;
+    right: -4px;
+    z-index: 4;
+    font-size: 18px;
+    transform: rotate(15deg);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .char.holding .held-item { opacity: 1; }
+
+  .bubble {
+    position: absolute;
+    top: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fff;
+    border: 2px solid #333;
+    border-radius: 12px;
+    padding: 4px 10px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 20;
+    pointer-events: none;
+  }
+  .bubble::after {
+    content: "";
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #333;
+  }
+  .bubble.show { opacity: 1; }
+  .stage.bedroom .bubble {
+    background: #3a2850;
+    color: #ffe8f0;
+    border-color: #c080b0;
+  }
+  .stage.bedroom .bubble::after { border-top-color: #c080b0; }
+
+  /* Lani the cat */
+  .lani {
+    position: absolute;
+    bottom: 14%;
+    width: 42px;
+    height: 36px;
+    z-index: 8;
+    transition: left 3s ease, bottom 1s ease;
+  }
+  .lani .cat-body {
+    position: absolute;
+    bottom: 0;
+    left: 6px;
+    width: 28px;
+    height: 20px;
+    background: #9a9aa8;
+    border-radius: 40% 40% 35% 35%;
+    border: 1.5px solid #6a6a78;
+  }
+  .lani .cat-head {
+    position: absolute;
+    bottom: 12px;
+    left: 0;
+    width: 22px;
+    height: 20px;
+    background: #a0a0b0;
+    border-radius: 45%;
+    border: 1.5px solid #6a6a78;
+  }
+  .lani .cat-ear {
+    position: absolute;
+    top: -6px;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 9px solid #8a8a98;
+  }
+  .lani .cat-ear.l { left: 1px; }
+  .lani .cat-ear.r { right: 1px; }
+  .lani .cat-ear::after {
+    content: "";
+    position: absolute;
+    left: -3px;
+    top: 3px;
+    border-left: 3px solid transparent;
+    border-right: 3px solid transparent;
+    border-bottom: 5px solid #c8a0b0;
+  }
+  .lani .cat-eye {
+    position: absolute;
+    width: 4px;
+    height: 5px;
+    background: #e8d060;
+    border-radius: 50%;
+    top: 7px;
+  }
+  .lani .cat-eye.l { left: 4px; }
+  .lani .cat-eye.r { right: 4px; }
+  .lani .cat-nose {
+    position: absolute;
+    width: 4px;
+    height: 3px;
+    background: #d08090;
+    border-radius: 50%;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .lani .cat-tail {
+    position: absolute;
+    right: -2px;
+    bottom: 8px;
+    width: 14px;
+    height: 6px;
+    background: #8a8a98;
+    border-radius: 0 8px 8px 0;
+    border: 1.5px solid #6a6a78;
+    border-left: none;
+    transform-origin: left center;
+    animation: tailWag 2s ease-in-out infinite;
+  }
+  .lani .cheeks {
+    position: absolute;
+    width: 5px;
+    height: 4px;
+    background: #c8a0a8;
+    border-radius: 50%;
+    top: 10px;
+    opacity: 0.6;
+  }
+  .lani .cheeks.l { left: 1px; }
+  .lani .cheeks.r { right: 1px; }
+
+  /* Baby Nikola */
+  .baby {
+    position: absolute;
+    bottom: 32%;
+    left: 50%;
+    transform: translateX(-50%) scale(0);
+    width: 44px;
+    height: 36px;
+    z-index: 14;
+    transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    opacity: 0;
+  }
+  .baby.show {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+  .baby.focus {
+    transform: translateX(-50%) scale(1.35);
+    bottom: 38%;
+  }
+  .baby .swaddle {
+    width: 100%;
+    height: 100%;
+    background: #c8e0f8;
+    border-radius: 50% 50% 40% 40%;
+    border: 2px solid #88b0d8;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .baby .swaddle::before {
+    content: "";
+    position: absolute;
+    top: 15%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 22px;
+    height: 18px;
+    background: #ffe8d8;
+    border-radius: 50%;
+    border: 1.5px solid #e8c8b0;
+  }
+  .baby .swaddle::after {
+    content: "";
+    position: absolute;
+    top: 28%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3px;
+    height: 3px;
+    background: #e8a0a0;
+    border-radius: 50%;
+    box-shadow: -5px 0 0 #333, 5px 0 0 #333;
+  }
+  .baby .cap {
+    position: absolute;
+    top: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 10px;
+    background: #88b8e8;
+    border-radius: 10px 10px 2px 2px;
+    z-index: 1;
+  }
+  .baby-label {
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    color: #ffe8f0;
+    background: rgba(80, 50, 100, 0.8);
+    padding: 2px 8px;
+    border-radius: 8px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .baby.show .baby-label { opacity: 1; }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .who-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .who-label {
+    font-size: 0.8rem;
+    color: var(--soft);
+    font-weight: 600;
+  }
+  .toggle {
+    display: flex;
+    background: #fff;
+    border-radius: 999px;
+    padding: 3px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 2px solid #f0d8e0;
+  }
+  .toggle button {
+    border: none;
+    background: transparent;
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--soft);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .toggle button.active {
+    background: linear-gradient(135deg, #f8a0b8, #e87098);
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(232, 112, 152, 0.4);
+  }
+  .toggle button.active.dudu-active {
+    background: linear-gradient(135deg, #90c0e8, #6090d0);
+    box-shadow: 0 2px 6px rgba(96, 144, 208, 0.4);
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  .actions button, .story-row button {
+    border: none;
+    border-radius: 14px;
+    padding: 12px 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    color: var(--ink);
+    box-shadow: 0 3px 0 rgba(0,0,0,0.08);
+  }
+  .actions button:active, .story-row button:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.08);
+  }
+  .actions button:disabled, .story-row button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .btn-coffee {
+    background: linear-gradient(160deg, #ffe0b8, #f0c090);
+  }
+  .btn-adventure {
+    background: linear-gradient(160deg, #c8e8f8, #98d0e8);
+  }
+  .btn-bedroom {
+    background: linear-gradient(160deg, #e8d0f0, #d0b0e0);
+  }
+  .story-row {
+    display: flex;
+    gap: 8px;
+  }
+  .btn-story {
+    flex: 1;
+    background: linear-gradient(160deg, #ffe8f0, #f0d8ff);
+    border: 2px solid #e8b0c8 !important;
+  }
+  .btn-done {
+    display: none;
+    flex: 1;
+    background: linear-gradient(160deg, #d8f0e0, #b8e8c8);
+  }
+  .btn-done.show { display: block; }
+
+  .hint {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--soft);
+    min-height: 1.2em;
+  }
+  .progress {
+    height: 4px;
+    background: rgba(0,0,0,0.06);
+    border-radius: 4px;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .progress.show { opacity: 1; }
+  .progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #f8a0b8, #90c0e8);
+    border-radius: 4px;
+    transition: width 0.1s linear;
+  }
+
+  .dedicate {
+    text-align: center;
+    font-size: 0.72rem;
+    color: #c08098;
+    padding-top: 4px;
+  }
+
+  @keyframes steam {
+    0%, 100% { opacity: 0.4; transform: translateY(0); }
+    50% { opacity: 0.9; transform: translateY(-6px); }
+  }
+  @keyframes floaty {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  @keyframes heartRise {
+    0% { opacity: 0; transform: translateY(0) scale(0.5); }
+    20% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-60px) scale(1.2); }
+  }
+  @keyframes tailWag {
+    0%, 100% { transform: rotate(-10deg); }
+    50% { transform: rotate(15deg); }
+  }
+  @keyframes nibble {
+    0%, 100% { transform: translateX(-50%) rotate(0deg); }
+    50% { transform: translateX(-50%) rotate(-3deg) translateY(2px); }
+  }
+  .char.eating .panda .head {
+    animation: nibble 0.6s ease-in-out infinite;
+  }
+  @keyframes walkBob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+  .char.walking .panda { animation: walkBob 0.5s ease-in-out infinite; }
+
+  @media (max-width: 400px) {
+    .char { width: 60px; height: 78px; }
+    .actions button { font-size: 0.75rem; padding: 10px 4px; }
+    header h1 { font-size: 1.15rem; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Bubu &amp; Dudu Day</h1>
+    <p class="sub">A little surprise for Crystal, with Lani too</p>
+  </header>
+
+  <div class="stage-wrap">
+    <div class="stage idle" id="stage">
+      <div class="scene-title" id="sceneTitle"></div>
+      <div class="dim-overlay" id="dim"></div>
+      <div class="decor" id="decor"></div>
+
+      <div class="char bubu" id="bubu">
+        <div class="bubble" id="bubuBubble"></div>
+        <div class="panda bubu-look">
+          <div class="ears">
+            <div class="ear l pink"></div>
+            <div class="ear r pink"></div>
+          </div>
+          <div class="bow"></div>
+          <div class="head">
+            <div class="eye-patch l"><div class="pupil"></div></div>
+            <div class="eye-patch r"><div class="pupil"></div></div>
+            <div class="blush l"></div>
+            <div class="blush r"></div>
+            <div class="nose"></div>
+            <div class="mouth"></div>
+          </div>
+          <div class="arm l"></div>
+          <div class="arm r"></div>
+          <div class="body"><div class="belly"></div></div>
+          <div class="held-item" id="bubuHeld"></div>
+        </div>
+      </div>
+
+      <div class="char dudu" id="dudu">
+        <div class="bubble" id="duduBubble"></div>
+        <div class="panda dudu-look">
+          <div class="ears">
+            <div class="ear l"></div>
+            <div class="ear r"></div>
+          </div>
+          <div class="head">
+            <div class="eye-patch l"><div class="pupil"></div></div>
+            <div class="eye-patch r"><div class="pupil"></div></div>
+            <div class="blush l"></div>
+            <div class="blush r"></div>
+            <div class="nose"></div>
+            <div class="mouth"></div>
+          </div>
+          <div class="scarf"></div>
+          <div class="arm l"></div>
+          <div class="arm r"></div>
+          <div class="body"><div class="belly"></div></div>
+          <div class="held-item" id="duduHeld"></div>
+        </div>
+      </div>
+
+      <div class="lani" id="lani" style="left: 72%;">
+        <div class="cat-body"></div>
+        <div class="cat-head">
+          <div class="cat-ear l"></div>
+          <div class="cat-ear r"></div>
+          <div class="cat-eye l"></div>
+          <div class="cat-eye r"></div>
+          <div class="cheeks l"></div>
+          <div class="cheeks r"></div>
+          <div class="cat-nose"></div>
+        </div>
+        <div class="cat-tail"></div>
+      </div>
+
+      <div class="baby" id="baby">
+        <div class="cap"></div>
+        <div class="swaddle"></div>
+        <div class="baby-label">baby boy Nikola</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="progress" id="progress"><div class="progress-bar" id="progressBar"></div></div>
+
+  <div class="controls">
+    <div class="who-row">
+      <span class="who-label">You control:</span>
+      <div class="toggle" role="group" aria-label="Choose character">
+        <button type="button" id="btnBubu" class="active" aria-pressed="true">Bubu</button>
+        <button type="button" id="btnDudu" class="dudu-active" aria-pressed="false">Dudu</button>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn-coffee" id="btnCoffee">Coffee</button>
+      <button type="button" class="btn-adventure" id="btnAdventure">Adventure</button>
+      <button type="button" class="btn-bedroom" id="btnBedroom">Bedroom</button>
+    </div>
+
+    <div class="story-row">
+      <button type="button" class="btn-story" id="btnStory">Play story</button>
+      <button type="button" class="btn-done" id="btnDone">Done / Replay</button>
+    </div>
+  </div>
+
+  <p class="hint" id="hint">Pick Bubu or Dudu, then tap an activity. Or play the story.</p>
+  <p class="dedicate">For Crystal, from Maksym. Love you.</p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var controller = "bubu";
+  var mode = "interactive";
+  var busy = false;
+  var storyTimers = [];
+  var laniTimer = null;
+  var heartTimers = [];
+
+  var stage = document.getElementById("stage");
+  var decor = document.getElementById("decor");
+  var sceneTitle = document.getElementById("sceneTitle");
+  var dim = document.getElementById("dim");
+  var bubu = document.getElementById("bubu");
+  var dudu = document.getElementById("dudu");
+  var lani = document.getElementById("lani");
+  var baby = document.getElementById("baby");
+  var bubuBubble = document.getElementById("bubuBubble");
+  var duduBubble = document.getElementById("duduBubble");
+  var bubuHeld = document.getElementById("bubuHeld");
+  var duduHeld = document.getElementById("duduHeld");
+  var hint = document.getElementById("hint");
+  var progress = document.getElementById("progress");
+  var progressBar = document.getElementById("progressBar");
+  var btnBubu = document.getElementById("btnBubu");
+  var btnDudu = document.getElementById("btnDudu");
+  var btnCoffee = document.getElementById("btnCoffee");
+  var btnAdventure = document.getElementById("btnAdventure");
+  var btnBedroom = document.getElementById("btnBedroom");
+  var btnStory = document.getElementById("btnStory");
+  var btnDone = document.getElementById("btnDone");
+
+  function setController(who) {
+    if (busy && mode === "story") return;
+    controller = who;
+    btnBubu.classList.toggle("active", who === "bubu");
+    btnDudu.classList.toggle("active", who === "dudu");
+    btnBubu.setAttribute("aria-pressed", who === "bubu" ? "true" : "false");
+    btnDudu.setAttribute("aria-pressed", who === "dudu" ? "true" : "false");
+    bubu.classList.toggle("leader", who === "bubu");
+    dudu.classList.toggle("leader", who === "dudu");
+    hint.textContent = who === "bubu"
+      ? "Bubu leads. She picks the vibe."
+      : "Dudu leads. He picks the vibe.";
+  }
+
+  function clearTimers() {
+    storyTimers.forEach(clearTimeout);
+    storyTimers = [];
+    heartTimers.forEach(clearTimeout);
+    heartTimers = [];
+  }
+
+  function setBusy(v) {
+    busy = v;
+    var disableActs = v && mode === "story";
+    btnCoffee.disabled = disableActs;
+    btnAdventure.disabled = disableActs;
+    btnBedroom.disabled = disableActs;
+    btnStory.disabled = v && mode === "story";
+    btnBubu.disabled = disableActs;
+    btnDudu.disabled = disableActs;
+  }
+
+  function showTitle(text, ms) {
+    sceneTitle.textContent = text;
+    sceneTitle.classList.add("show");
+    if (ms) {
+      var t = setTimeout(function () {
+        sceneTitle.classList.remove("show");
+      }, ms);
+      storyTimers.push(t);
+    }
+  }
+
+  function say(who, text, ms) {
+    var el = who === "bubu" ? bubuBubble : duduBubble;
+    var other = who === "bubu" ? duduBubble : bubuBubble;
+    other.classList.remove("show");
+    el.textContent = text;
+    el.classList.add("show");
+    if (ms) {
+      var t = setTimeout(function () { el.classList.remove("show"); }, ms);
+      storyTimers.push(t);
+    }
+  }
+
+  function clearSay() {
+    bubuBubble.classList.remove("show");
+    duduBubble.classList.remove("show");
+  }
+
+  function setHeld(who, emoji) {
+    bubuHeld.textContent = "";
+    duduHeld.textContent = "";
+    bubu.classList.remove("holding");
+    dudu.classList.remove("holding");
+    if (!emoji) return;
+    if (who === "bubu") {
+      bubuHeld.textContent = emoji;
+      bubu.classList.add("holding");
+    } else {
+      duduHeld.textContent = emoji;
+      dudu.classList.add("holding");
+    }
+  }
+
+  function resetChars() {
+    bubu.classList.remove("sitting", "eating", "walking", "holding");
+    dudu.classList.remove("sitting", "eating", "walking", "holding");
+    bubu.querySelector(".panda").classList.remove("extra-blush");
+    dudu.querySelector(".panda").classList.remove("extra-blush");
+    setHeld(null, null);
+    clearSay();
+    baby.classList.remove("show", "focus");
+    dim.classList.remove("on");
+    clearHearts();
+  }
+
+  function clearHearts() {
+    stage.querySelectorAll(".heart-float").forEach(function (h) { h.remove(); });
+  }
+
+  function spawnHearts(n) {
+    for (var i = 0; i < n; i++) {
+      (function (i) {
+        var t = setTimeout(function () {
+          var h = document.createElement("div");
+          h.className = "heart-float";
+          h.textContent = Math.random() > 0.5 ? "💕" : "💗";
+          h.style.left = (20 + Math.random() * 60) + "%";
+          h.style.bottom = (25 + Math.random() * 30) + "%";
+          h.style.animationDelay = "0s";
+          stage.appendChild(h);
+          var rm = setTimeout(function () { h.remove(); }, 2600);
+          heartTimers.push(rm);
+        }, i * 400);
+        heartTimers.push(t);
+      })(i);
+    }
+  }
+
+  function moveLani(spot) {
+    var spots = {
+      cafe: { left: "8%", bottom: "12%" },
+      adventure: { left: "78%", bottom: "18%" },
+      bedroom: { left: "10%", bottom: "10%" },
+      idle: { left: "72%", bottom: "14%" }
+    };
+    var s = spots[spot] || spots.idle;
+    lani.style.left = s.left;
+    lani.style.bottom = s.bottom;
+  }
+
+  function wanderLani() {
+    if (laniTimer) clearInterval(laniTimer);
+    laniTimer = setInterval(function () {
+      if (mode === "story") return;
+      var x = 5 + Math.random() * 80;
+      lani.style.left = x + "%";
+    }, 5000);
+  }
+
+  function setDecor(scene) {
+    decor.innerHTML = "";
+    stage.className = "stage " + scene;
+
+    if (scene === "cafe") {
+      var table = document.createElement("div");
+      table.className = "table";
+      var cup1 = document.createElement("div");
+      cup1.className = "cup steam";
+      cup1.style.left = "28%";
+      var cup2 = document.createElement("div");
+      cup2.className = "cup steam";
+      cup2.style.left = "55%";
+      cup2.style.animationDelay = "0.5s";
+      var cro = document.createElement("div");
+      cro.className = "croissant";
+      cro.style.left = "42%";
+      table.appendChild(cup1);
+      table.appendChild(cup2);
+      table.appendChild(cro);
+      decor.appendChild(table);
+    } else if (scene === "adventure") {
+      var map = document.createElement("div");
+      map.className = "map";
+      var pin = document.createElement("div");
+      pin.className = "pin";
+      map.appendChild(pin);
+      var suitcase = document.createElement("div");
+      suitcase.className = "suitcase";
+      var c1 = document.createElement("div");
+      c1.className = "cloud";
+      c1.style.cssText = "width:40px;height:16px;top:12%;left:10%;";
+      var c2 = document.createElement("div");
+      c2.className = "cloud";
+      c2.style.cssText = "width:50px;height:18px;top:8%;left:40%;animation-delay:1s;";
+      decor.appendChild(c1);
+      decor.appendChild(c2);
+      decor.appendChild(map);
+      decor.appendChild(suitcase);
+    } else if (scene === "bedroom") {
+      var curtains = document.createElement("div");
+      curtains.className = "curtains";
+      var bed = document.createElement("div");
+      bed.className = "bed";
+      decor.appendChild(curtains);
+      decor.appendChild(bed);
+    }
+  }
+
+  function runCoffee(opts) {
+    opts = opts || {};
+    var who = opts.who || controller;
+    var other = who === "bubu" ? "dudu" : "bubu";
+    resetChars();
+    setDecor("cafe");
+    moveLani("cafe");
+    showTitle("Coffee date", opts.titleMs || 2500);
+
+    bubu.classList.add("sitting");
+    dudu.classList.add("sitting");
+    bubu.style.bottom = "28%";
+    dudu.style.bottom = "28%";
+    bubu.style.left = "22%";
+    dudu.style.left = "48%";
+
+    setHeld(who, "🥐");
+    document.getElementById(who).classList.add("eating");
+    say(who, who === "bubu" ? "Mmm, croissant!" : "Coffee for us!", 3500);
+    var t = setTimeout(function () {
+      say(other, other === "bubu" ? "So cozy together" : "Best cafe day", 3000);
+    }, 2800);
+    storyTimers.push(t);
+
+    hint.textContent = who === "bubu"
+      ? "Bubu shares the croissant. Lani watches from the side."
+      : "Dudu holds the croissant. Warm cafe vibes.";
+  }
+
+  function runAdventure(opts) {
+    opts = opts || {};
+    var who = opts.who || controller;
+    var other = who === "bubu" ? "dudu" : "bubu";
+    resetChars();
+    setDecor("adventure");
+    moveLani("adventure");
+    showTitle("Little adventure", opts.titleMs || 2500);
+
+    bubu.style.bottom = "22%";
+    dudu.style.bottom = "22%";
+    bubu.style.left = "20%";
+    dudu.style.left = "45%";
+
+    document.getElementById(who).classList.add("walking");
+    setHeld(who, "🧳");
+    say(who, who === "bubu" ? "Where to next?" : "Adventure time!", 3500);
+    var t = setTimeout(function () {
+      say(other, other === "bubu" ? "I packed snacks!" : "Map says this way!", 3000);
+    }, 2800);
+    storyTimers.push(t);
+
+    hint.textContent = who === "bubu"
+      ? "Bubu leads the trip. Suitcase ready."
+      : "Dudu leads the trip. Map and suitcase ready.";
+  }
+
+  function runBedroom(opts) {
+    opts = opts || {};
+    var who = opts.who || controller;
+    var other = who === "bubu" ? "dudu" : "bubu";
+    var babyDelay = opts.babyDelay != null ? opts.babyDelay : 4000;
+    var focusDelay = opts.focusDelay != null ? opts.focusDelay : 9000;
+    resetChars();
+    setDecor("bedroom");
+    moveLani("bedroom");
+    showTitle("Cozy time", opts.titleMs || 2500);
+
+    bubu.style.bottom = "26%";
+    dudu.style.bottom = "26%";
+    bubu.style.left = "24%";
+    dudu.style.left = "46%";
+    bubu.classList.add("sitting");
+    dudu.classList.add("sitting");
+
+    dim.classList.add("on");
+    bubu.querySelector(".panda").classList.add("extra-blush");
+    dudu.querySelector(".panda").classList.add("extra-blush");
+    spawnHearts(8);
+
+    say(who, who === "bubu" ? "Soft lights..." : "Just us...", 3000);
+    var t1 = setTimeout(function () {
+      say(other, "💕", 2500);
+      spawnHearts(5);
+    }, 2500);
+    storyTimers.push(t1);
+
+    var t2 = setTimeout(function () {
+      clearSay();
+      baby.classList.add("show");
+      setHeld(who, "👶");
+      say(who, who === "bubu" ? "Our little boy" : "Hello Nikola", 4000);
+      hint.textContent = "A baby boy appears. Sweet Nikola.";
+    }, babyDelay);
+    storyTimers.push(t2);
+
+    var t3 = setTimeout(function () {
+      baby.classList.add("focus");
+      say(other, other === "bubu" ? "He is perfect" : "Our son!", 4000);
+    }, focusDelay);
+    storyTimers.push(t3);
+
+    hint.textContent = "Curtains closed. Hearts and soft blush. Cozy time.";
+  }
+
+  function idleHome() {
+    resetChars();
+    setDecor("idle");
+    moveLani("idle");
+    sceneTitle.classList.remove("show");
+    bubu.style.bottom = "22%";
+    dudu.style.bottom = "22%";
+    bubu.style.left = "18%";
+    dudu.style.left = "52%";
+    say("bubu", "Hi Crystal!", 2500);
+    var t = setTimeout(function () {
+      say("dudu", "We love you", 2500);
+    }, 2000);
+    storyTimers.push(t);
+    hint.textContent = "Pick Bubu or Dudu, then tap an activity. Or play the story.";
+  }
+
+  function setProgress(pct) {
+    progressBar.style.width = Math.max(0, Math.min(100, pct)) + "%";
+  }
+
+  function runStory() {
+    if (busy) return;
+    clearTimers();
+    mode = "story";
+    setBusy(true);
+    btnDone.classList.remove("show");
+    progress.classList.add("show");
+    setProgress(0);
+    hint.textContent = "Story playing...";
+
+    var total = 35000;
+    var start = Date.now();
+    var tick = setInterval(function () {
+      var elapsed = Date.now() - start;
+      setProgress((elapsed / total) * 100);
+      if (elapsed >= total) clearInterval(tick);
+    }, 100);
+    storyTimers.push(tick);
+
+    // Scene 1 Coffee: 10s
+    runCoffee({ who: "bubu", titleMs: 3000, babyDelay: 99999 });
+    hint.textContent = "Scene 1: Coffee date";
+
+    // Scene 2 Adventure: 10s (at 10s)
+    var s2 = setTimeout(function () {
+      runAdventure({ who: "dudu", titleMs: 3000 });
+      hint.textContent = "Scene 2: Little adventure";
+    }, 10000);
+    storyTimers.push(s2);
+
+    // Scene 3 Bedroom: 15s (at 20s), baby focus near end
+    var s3 = setTimeout(function () {
+      runBedroom({
+        who: "bubu",
+        titleMs: 3000,
+        babyDelay: 5000,
+        focusDelay: 10000
+      });
+      hint.textContent = "Scene 3: Cozy time, then baby boy Nikola";
+    }, 20000);
+    storyTimers.push(s3);
+
+    var done = setTimeout(function () {
+      clearInterval(tick);
+      setProgress(100);
+      mode = "interactive";
+      setBusy(false);
+      progress.classList.remove("show");
+      btnDone.classList.add("show");
+      hint.textContent = "Story done. Tap Done / Replay, or try activities yourself.";
+      showTitle("The end", 4000);
+    }, 35000);
+    storyTimers.push(done);
+  }
+
+  function onDone() {
+    clearTimers();
+    mode = "interactive";
+    setBusy(false);
+    progress.classList.remove("show");
+    btnDone.classList.remove("show");
+    setProgress(0);
+    idleHome();
+  }
+
+  btnBubu.addEventListener("click", function () { setController("bubu"); });
+  btnDudu.addEventListener("click", function () { setController("dudu"); });
+  btnCoffee.addEventListener("click", function () {
+    if (busy && mode === "story") return;
+    clearTimers();
+    runCoffee();
+  });
+  btnAdventure.addEventListener("click", function () {
+    if (busy && mode === "story") return;
+    clearTimers();
+    runAdventure();
+  });
+  btnBedroom.addEventListener("click", function () {
+    if (busy && mode === "story") return;
+    clearTimers();
+    runBedroom({ babyDelay: 3500, focusDelay: 7000 });
+  });
+  btnStory.addEventListener("click", runStory);
+  btnDone.addEventListener("click", onDone);
+
+  setController("bubu");
+  idleHome();
+  wanderLani();
+})();
+</script>
+</body>
+</html>
